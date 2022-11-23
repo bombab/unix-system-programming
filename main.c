@@ -10,12 +10,12 @@
 void normal_calc(void *tmp_p); // 정상적으로 계산 - 후위표기식 변환 -> 계산
 void order_calc(void *tmp_p); // 연산순서 무시하고 순서대로 계산 - 후위표기식 변환 -> 계산 
 void inverse_calc(void *tmp_p); // 연산순서 무시하고 거꾸고 계산 - 후위표기식 변환 -> 계산
-void start_calculate(int calc_client); // client에서 파일을 읽어와 쓰레드를 생성 후 계산수행
+void start_calculate(long calc_client); // client에서 파일을 읽어와 쓰레드를 생성 후 계산수행
+void server_do(void *tmp_p);
 
-
-pthread_t callThd[NUM_THREADS];
-pthread_mutex_t mutexcal;
-int calc_client;
+pthread_t callThd[NUM_THREADS][NUM_THREADS];
+pthread_mutex_t mutexcal_client, mutexcal_server;
+long calc_client;
 
 /*
 int main() {
@@ -52,33 +52,33 @@ int main() {
 
 // main 함수가 Server 역할  
 int main() {
-	pid_t pid;
+	pid_t pid_client1, pid_client2;
 
-	printf("계산을 수행할 클라이언트를 선택해주세요 1번 : Client1, 2번 : Client2");
-	scanf("%d", &calc_client);
+	printf("계산을 수행할 클라이언트를 선택해주세요 1번 - Client1, 2번 - Client2 : ");
+	scanf("%ld", &calc_client);
  	
-	pid = fork(); // Client 1 생성
-	if(pid < 0) perror("Client 1 생성 실패");
+	pid_client1 = fork(); // Client 1 생성
+	if(pid_client1 < 0) perror("Client 1 생성 실패");
 
-	if(pid == 0) {  // Client 1 수행 영역
+	if(pid_client1 == 0) {  // Client 1 수행 영역
 		if(calc_client != 2)  {// 2번이 아니면 파일을 읽어와 계산 수행 
 			printf("Client 1에서 계산을 수행합니다. 계산을 완료 후 서버로 결과를 전송합니다. \n");
 			start_calculate(calc_client);
 			
 		}
 
-		else { // 계산결과를 받아 파일로 출력
+		else { // Server에게 계산결과를 받아 파일로 출력
 
 		}
 		exit(0);
 	}
 
-	pid = fork(); // Client 2 생성
+	pid_client2 = fork(); // Client 2 생성
 
-	if(pid < 0) perror("Client 2 생성 실패");
+	if(pid_client2 < 0) perror("Client 2 생성 실패");
 
 
-	if(pid == 0) { // Client 2 수행 영역
+	if(pid_client2 == 0) { // Client 2 수행 영역
 		if(calc_client == 2) { // 2번이면 파일을 읽어와 계산 수행 
 			printf("Client 2에서 계산을 수행합니다. 계산을 완료 후 서버로 결과를 전송합니다. \n");
 			start_calculate(calc_client);
@@ -91,22 +91,38 @@ int main() {
 		}
 		exit(0);
 	}
-// 여기서부터 Server 수행 영역
+// ======= 여기서부터 Server 수행 영역 =========
+int t_id;
+int status;
+pthread_attr_t attr;
+pthread_mutex_init(&mutexcal_server, NULL);
+pthread_attr_init(&attr);
+pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
+if(t_id = pthread_create(&callThd[1][0], &attr, (void*)server_do, (void*)calc_client) != 0) exit(1);
+if(t_id = pthread_create(&callThd[2][1], &attr, (void*)server_do, (void*)calc_client)!= 0) exit(1);
+if(t_id = pthread_create(&callThd[3][2], &attr, (void*)server_do, (void*)calc_client)!= 0) exit(1);
 
+pthread_attr_destroy(&attr);
 
-	return 0;
+for (int i = 0; i < NUM_THREADS; i++) {
+	pthread_join(callThd[1][i], (void**)&status);
+}
+
+pthread_mutex_destroy(&mutexcal_server);
+
+pthread_exit(NULL);
 }
 
 void normal_calc(void *tmp_p) {
 
 	char arr[MAX_SIZE];
-	pthread_mutex_lock(&mutexcal);
+	pthread_mutex_lock(&mutexcal_client);
 	calc_thread * tp = (calc_thread *)tmp_p;
 	FILE *fp = tp->fp;
 	fgets(arr, sizeof(arr), fp);
 	fseek(fp, 0, SEEK_SET);
-	pthread_mutex_unlock(&mutexcal);
+	pthread_mutex_unlock(&mutexcal_client);
 	int verified = is_verified(arr);
 	if (verified == 0) {
 		fprintf(stderr, "수식이 유효하지 않습니다.\n");
@@ -173,12 +189,12 @@ void normal_calc(void *tmp_p) {
 void order_calc(void* tmp_p) {
 
 	char arr[MAX_SIZE];
-	pthread_mutex_lock(&mutexcal);
+	pthread_mutex_lock(&mutexcal_client);
 	calc_thread * tp = (calc_thread *)tmp_p;
 	FILE *fp = tp->fp;
 	fgets(arr, sizeof(arr), fp);
 	fseek(fp, 0, SEEK_SET);
-	pthread_mutex_unlock(&mutexcal);
+	pthread_mutex_unlock(&mutexcal_client);
 	int verified = is_verified(arr);
 	if (verified == 0) {
 		fprintf(stderr, "수식이 유효하지 않습니다.\n");
@@ -226,12 +242,12 @@ void order_calc(void* tmp_p) {
 void inverse_calc(void* tmp_p) {
 
 	char arr[MAX_SIZE];
-	pthread_mutex_lock(&mutexcal);
+	pthread_mutex_lock(&mutexcal_client);
 	calc_thread * tp = (calc_thread *)tmp_p;
 	FILE *fp = tp->fp;
 	fgets(arr, sizeof(arr), fp);
 	fseek(fp, 0, SEEK_SET);
-	pthread_mutex_unlock(&mutexcal);
+	pthread_mutex_unlock(&mutexcal_client);
 	int verified = is_verified(arr);
 	if (verified == 0) {
 		fprintf(stderr, "수식이 유효하지 않습니다.\n");
@@ -281,7 +297,7 @@ void inverse_calc(void* tmp_p) {
 }
 
 
-void start_calculate(int calc_client) {
+void start_calculate(long calc_client) {
 
 	int status;
 	int t_id;
@@ -296,21 +312,52 @@ void start_calculate(int calc_client) {
 	calc_thread *info_p = &info;
 	info_p->calc_client =  calc_client;
 	info_p->fp =  fp;
-	pthread_mutex_init(&mutexcal, NULL);
+	pthread_mutex_init(&mutexcal_client, NULL);
 	pthread_attr_init(&attr);
 	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
-	if(t_id = pthread_create(&callThd[0], &attr, (void*)normal_calc, (void*)info_p) != 0) exit(1);
-	if(t_id = pthread_create(&callThd[1], &attr, (void*)order_calc, (void*)info_p)!= 0) exit(1);
-	if(t_id = pthread_create(&callThd[2], &attr, (void*)inverse_calc, (void*)info_p)!= 0) exit(1);
+	if(t_id = pthread_create(&callThd[0][0], &attr, (void*)normal_calc, (void*)info_p) != 0) exit(1);
+	if(t_id = pthread_create(&callThd[0][1], &attr, (void*)order_calc, (void*)info_p)!= 0) exit(1);
+	if(t_id = pthread_create(&callThd[0][2], &attr, (void*)inverse_calc, (void*)info_p)!= 0) exit(1);
 
 	pthread_attr_destroy(&attr);
 
+	// 계산해서 전송하는 역할의 쓰레드 3개가 모두 수행이 완료되기까지 기다림
 	for (int i = 0; i < NUM_THREADS; i++) {
-		pthread_join(callThd[i], (void**)&status);
+		pthread_join(callThd[0][i], (void**)&status);
 	}
 	fclose(fp);
-	pthread_mutex_destroy(&mutexcal);
+	pthread_mutex_destroy(&mutexcal_client);
 	pthread_exit(NULL);
 
+}
+  
+// tmp_p 는 int형 client_calc 을 받는다.
+void server_do(void *tmp_p)  { 
+
+	long calc_client = (long)tmp_p;
+	int r_qid;
+	int mlen;
+	key_t revq_key, sndq_key;
+	c2s_msg rcv_msg;
+
+	if(calc_client != 2) {
+		revq_key = C1toS_QKEY;
+		sndq_key = StoC2_QKEY;
+	}
+	else {
+		revq_key = C2toS_QKEY;
+		sndq_key = StoC1_QKEY;
+	}
+	
+	if((r_qid = init_queue(revq_key)) == -1) {
+		perror("메시지 큐 생성 & 개방 실패");
+		return; // 메시지큐 생성
+	}
+	
+	if((mlen = msgrcv(r_qid, &rcv_msg, sizeof(rcv_msg.real_msg), 0, 0 )) ==  -1) {
+		perror("메시지 수신 실패");
+		return;
+	}
+	printf("계산결과 : %d\n", rcv_msg.real_msg.result);
 }
