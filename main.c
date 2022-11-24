@@ -17,9 +17,9 @@
 void normal_calc(void *tmp_p); // 정상적으로 계산 - 후위표기식 변환 -> 계산
 void order_calc(void *tmp_p); // 연산순서 무시하고 순서대로 계산 - 후위표기식 변환 -> 계산 
 void inverse_calc(void *tmp_p); // 연산순서 무시하고 거꾸고 계산 - 후위표기식 변환 -> 계산
-void start_calculate(long calc_client); // client에서 파일을 읽어와 쓰레드를 생성 후 계산수행
-void server_do(void *tmp_p);
-void start_file_print(long clac_client);
+void start_calculate(); // client에서 파일을 읽어와 쓰레드를 생성 후 계산수행
+void server_do();
+void start_file_print();
 
 pthread_t callThd[NUM_THREADS][NUM_THREADS];
 pthread_mutex_t mutexcal_client;
@@ -45,13 +45,13 @@ int main() {
 	if(pid_client1 == 0) {  // Client 1 수행 영역
 		if(calc_client != 2)  {// 2번이 아니면 파일을 읽어와 계산 수행 
 			printf("Client 1에서 계산을 수행합니다. 계산을 완료 후 서버로 결과를 전송합니다. \n");
-			start_calculate(calc_client);
+			start_calculate();
 			
 		}
 
 		else { // Server에게 계산결과를 받아 파일로 출력
 			printf("Client 1에서 Server로 부터 전달받은 계산 결과를 텍스트 파일로 출력합니다.  \n");
-			start_file_print(calc_client);
+			start_file_print();
 		}
 		exit(0);
 	}
@@ -64,13 +64,13 @@ int main() {
 	if(pid_client2 == 0) { // Client 2 수행 영역
 		if(calc_client == 2) { // 2번이면 파일을 읽어와 계산 수행 
 			printf("Client 2에서 계산을 수행합니다. 계산을 완료 후 서버로 결과를 전송합니다. \n");
-			start_calculate(calc_client);
+			start_calculate();
 
 		}
 		
 		else { // 계산결과를 받아 파일로 출력
 			printf("Client 2에서 Server로 부터 전달받은 계산 결과를 텍스트 파일로 출력합니다. \n");
-			start_file_print(calc_client);
+			start_file_print();
 
 		}
 		exit(0);
@@ -82,9 +82,9 @@ pthread_attr_t attr;
 pthread_attr_init(&attr);
 pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
-if(t_id = pthread_create(&callThd[1][0], &attr, (void*)server_do, (void*)calc_client) != 0) exit(1);
-if(t_id = pthread_create(&callThd[1][1], &attr, (void*)server_do, (void*)calc_client)!= 0) exit(1);
-if(t_id = pthread_create(&callThd[1][2], &attr, (void*)server_do, (void*)calc_client)!= 0) exit(1);
+if(t_id = pthread_create(&callThd[1][0], &attr, (void*)server_do, NULL) != 0) exit(1);
+if(t_id = pthread_create(&callThd[1][1], &attr, (void*)server_do, NULL)!= 0) exit(1);
+if(t_id = pthread_create(&callThd[1][2], &attr, (void*)server_do, NULL)!= 0) exit(1);
 
 pthread_attr_destroy(&attr);
 
@@ -106,8 +106,8 @@ void normal_calc(void *tmp_p) {
 
 	char arr[MAX_SIZE];
 	pthread_mutex_lock(&mutexcal_client);
-	calc_thread * tp = (calc_thread *)tmp_p;
-	FILE *fp = tp->fp;
+	FILE * fp = (FILE *)tmp_p;
+
 	fgets(arr, sizeof(arr), fp);
 	fseek(fp, 0, SEEK_SET);
 	pthread_mutex_unlock(&mutexcal_client);
@@ -160,7 +160,7 @@ void normal_calc(void *tmp_p) {
 	int answer = eval(to_postfix);
 
 
-	if(tp->calc_client != 2) { // 계산하는 client가 1이라면
+	if(calc_client != 2) { // 계산하는 client가 1이라면
 		if(Client2Server(C1toS_QKEY, answer, 'n', arr) < 0) {
 			printf("메시지 전송 실패\n");
 		}
@@ -178,8 +178,7 @@ void order_calc(void* tmp_p) {
 
 	char arr[MAX_SIZE];
 	pthread_mutex_lock(&mutexcal_client);
-	calc_thread * tp = (calc_thread *)tmp_p;
-	FILE *fp = tp->fp;
+	FILE * fp = (FILE *)tmp_p;
 	fgets(arr, sizeof(arr), fp);
 	fseek(fp, 0, SEEK_SET);
 	pthread_mutex_unlock(&mutexcal_client);
@@ -212,7 +211,7 @@ void order_calc(void* tmp_p) {
 	to_postfix[j++] = pop(&s);
 
 	int answer = eval(to_postfix);
-	if(tp->calc_client != 2) { // 계산하는 client가 1이라면
+	if(calc_client != 2) { // 계산하는 client가 1이라면
 		if(Client2Server(C1toS_QKEY, answer, 'o', arr) < 0) {
 			printf("메시지 전송 실패\n");
 		}
@@ -231,8 +230,7 @@ void inverse_calc(void* tmp_p) {
 
 	char arr[MAX_SIZE];
 	pthread_mutex_lock(&mutexcal_client);
-	calc_thread * tp = (calc_thread *)tmp_p;
-	FILE *fp = tp->fp;
+	FILE * fp = (FILE *)tmp_p;
 	fgets(arr, sizeof(arr), fp);
 	fseek(fp, 0, SEEK_SET);
 	pthread_mutex_unlock(&mutexcal_client);
@@ -271,7 +269,7 @@ void inverse_calc(void* tmp_p) {
 	to_postfix[j++] = pop(&s);
 
 	int answer = eval(to_postfix);
-	if(tp->calc_client != 2) { // 계산하는 client가 1이라면
+	if(calc_client != 2) { // 계산하는 client가 1이라면
 		if(Client2Server(C1toS_QKEY, answer, 'i', arr) < 0) {
 			printf("메시지 전송 실패\n");
 		}
@@ -285,7 +283,7 @@ void inverse_calc(void* tmp_p) {
 }
 
 
-void start_calculate(long calc_client) {
+void start_calculate() {
 
 	int status;
 	int t_id;
@@ -296,17 +294,14 @@ void start_calculate(long calc_client) {
 	}
 	pthread_attr_t attr;
 	
-	calc_thread info;
-	calc_thread *info_p = &info;
-	info_p->calc_client =  calc_client;
-	info_p->fp =  fp;
+	
 	pthread_mutex_init(&mutexcal_client, NULL);
 	pthread_attr_init(&attr);
 	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
-	if(t_id = pthread_create(&callThd[0][0], &attr, (void*)normal_calc, (void*)info_p) != 0) exit(1);
-	if(t_id = pthread_create(&callThd[0][1], &attr, (void*)order_calc, (void*)info_p)!= 0) exit(1);
-	if(t_id = pthread_create(&callThd[0][2], &attr, (void*)inverse_calc, (void*)info_p)!= 0) exit(1);
+	if(t_id = pthread_create(&callThd[0][0], &attr, (void*)normal_calc, (void*)fp) != 0) exit(1);
+	if(t_id = pthread_create(&callThd[0][1], &attr, (void*)order_calc, (void*)fp)!= 0) exit(1);
+	if(t_id = pthread_create(&callThd[0][2], &attr, (void*)inverse_calc, (void*)fp)!= 0) exit(1);
 
 	pthread_attr_destroy(&attr);
 
@@ -320,10 +315,8 @@ void start_calculate(long calc_client) {
 
 }
   
-// tmp_p 는 int형 client_calc 을 받는다.
-void server_do(void *tmp_p)  { 
+void server_do()  { 
 
-	long calc_client = (long)tmp_p;
 	int r_qid;
 	int mlen;
 	char print_form[MAX_SIZE*2];
@@ -378,8 +371,7 @@ void server_do(void *tmp_p)  {
 
 }
 
-void file_print(void *tmp_p) {
-	long calc_client = (long)tmp_p;
+void file_print() {
 	int r_qid;
 	int mlen;
 	key_t revq_key;
@@ -426,7 +418,7 @@ void file_print(void *tmp_p) {
 
 }
 
-void start_file_print(long calc_client) {
+void start_file_print() {
 	
 	int t_id;
 	int status;
@@ -434,9 +426,9 @@ void start_file_print(long calc_client) {
 	pthread_attr_init(&attr);
 	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
-	if(t_id = pthread_create(&callThd[2][0], &attr, (void*)file_print, (void*)calc_client) != 0) exit(1);
-	if(t_id = pthread_create(&callThd[2][1], &attr, (void*)file_print, (void*)calc_client)!= 0) exit(1);
-	if(t_id = pthread_create(&callThd[2][2], &attr, (void*)file_print, (void*)calc_client)!= 0) exit(1);
+	if(t_id = pthread_create(&callThd[2][0], &attr, (void*)file_print, NULL) != 0) exit(1);
+	if(t_id = pthread_create(&callThd[2][1], &attr, (void*)file_print, NULL)!= 0) exit(1);
+	if(t_id = pthread_create(&callThd[2][2], &attr, (void*)file_print, NULL)!= 0) exit(1);
 
 	pthread_attr_destroy(&attr);
 

@@ -15,10 +15,6 @@
 #define QPERM 0660              //큐의 허가
 #define MSG_MTYPE 1             /*메시지큐의 메시지에 대한 모든 MTYPE  정의*/
 
-typedef struct  { // 계산을 수행할 쓰레드에 전달해줘야할 구조체 타입            
-    long calc_client;
-    FILE *fp;
-} calc_thread;
 
 typedef struct
 { // 메시지 큐로 send 할 메시지중 실질 메시지 내용
