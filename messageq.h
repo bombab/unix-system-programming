@@ -24,6 +24,7 @@ typedef struct
 { // 메시지 큐로 send 할 메시지중 실질 메시지 내용
     int result;
     char calc_method;
+    char cal_formula[MAX_SIZE];
 } cal_result_msg;
 
 typedef struct
@@ -31,6 +32,17 @@ typedef struct
     long mtype; /* message type */
     cal_result_msg real_msg;
 } c2s_msg;
+
+typedef struct {
+    char calc_method;
+    char print_msg[MAX_SIZE * 2];
+}file_msg;
+
+typedef struct {
+    long mtype;
+    file_msg real_msg;
+} s2c_msg;
+
 
 /* init_queue -- 큐 식별자를 회득한다. */
 int init_queue(key_t type)
@@ -45,7 +57,7 @@ int init_queue(key_t type)
     return (queue_id);
 }
 
-int Client2Server(key_t type, int cal_result, char cal_type)
+int Client2Server(key_t type, int cal_result, char cal_type, char arr[])
 { // client에서 server로 메시지를 전송한다.
     int s_qid;
     c2s_msg c2s;
@@ -56,7 +68,7 @@ int Client2Server(key_t type, int cal_result, char cal_type)
     c2s.real_msg.result = cal_result;
     c2s.real_msg.calc_method = cal_type;
     c2s.mtype = (long)MSG_MTYPE;
-
+    strcpy(c2s.real_msg.cal_formula, arr);
     if (msgsnd(s_qid, &c2s, sizeof(c2s.real_msg), 0) == -1)
     {
 
@@ -67,9 +79,25 @@ int Client2Server(key_t type, int cal_result, char cal_type)
         return 0; // 정상적으로 전송될 시 0을 반환
 }
 
-int Server2Client()
-{ // server에서 client로 메시지 전송
-    return 0;
+int Server2Client(key_t type, char cal_type, char str[]) { // server에서 client로 메시지 전송
+    int s_qid;
+    s2c_msg s2c;
+    key_t snd_type = type;
+    if ((s_qid = init_queue(snd_type)) == -1)
+        return -1; // 메시지큐 생성
+
+    s2c.real_msg.calc_method = cal_type;
+    strcpy(s2c.real_msg.print_msg, str);
+    s2c.mtype = (long)MSG_MTYPE;
+
+     if (msgsnd(s_qid, &s2c, sizeof(s2c.real_msg), 0) == -1)
+    {
+
+        perror("msgsnd failed");
+        return -1;
+    }
+    else
+        return 0; // 정상적으로 전송될 시 0을 반환
 }
 
 #endif

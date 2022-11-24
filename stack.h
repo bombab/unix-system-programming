@@ -3,7 +3,7 @@
 #include <stdio.h>
 //============= 스택 ADT 정의 ===================
 
-#define MAX_SIZE 1000
+#define MAX_SIZE 100
 
 typedef int element;
 typedef struct {

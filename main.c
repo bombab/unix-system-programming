@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
+#include <unistd.h>
+#include <time.h>
+#include <sys/time.h>
 #include "stack.h"
 #include "calc.h"
 #include "messageq.h"
@@ -12,48 +15,18 @@ void order_calc(void *tmp_p); // 연산순서 무시하고 순서대로 계산 -
 void inverse_calc(void *tmp_p); // 연산순서 무시하고 거꾸고 계산 - 후위표기식 변환 -> 계산
 void start_calculate(long calc_client); // client에서 파일을 읽어와 쓰레드를 생성 후 계산수행
 void server_do(void *tmp_p);
+void start_file_print(long clac_client);
 
 pthread_t callThd[NUM_THREADS][NUM_THREADS];
-pthread_mutex_t mutexcal_client, mutexcal_server;
+pthread_mutex_t mutexcal_client;
 long calc_client;
-
-/*
-int main() {
-	int status;
-	FILE* fp = fopen("input.txt", "r");
-	if (fp == NULL) {
-		fprintf(stderr, "파일이 열리지 않았습니다.\n");
-		exit(1);
-	}
-	pthread_attr_t attr;
-	
-	
-
-	pthread_mutex_init(&mutexcal, NULL);
-	pthread_attr_init(&attr);
-	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-
-	pthread_create(&callThd[0], &attr, (void*)normal_calc, (void*)fp);
-	pthread_create(&callThd[1], &attr, (void*)order_calc, (void*)fp);
-	pthread_create(&callThd[2], &attr, (void*)inverse_calc, (void*)fp);
-
-	pthread_attr_destroy(&attr);
-
-	for (int i = 0; i < NUM_THREADS; i++) {
-		pthread_join(callThd[i], (void**)&status);
-	}
-	fclose(fp);
-	pthread_mutex_destroy(&mutexcal);
-	pthread_exit(NULL);
-
-}
-*/
 
 
 // main 함수가 Server 역할  
 int main() {
 	pid_t pid_client1, pid_client2;
-
+	struct timespec start, stop;
+	double accum;
 	printf("계산을 수행할 클라이언트를 선택해주세요 1번 - Client1, 2번 - Client2 : ");
 	scanf("%ld", &calc_client);
  	
@@ -68,7 +41,8 @@ int main() {
 		}
 
 		else { // Server에게 계산결과를 받아 파일로 출력
-
+			printf("Server로 부터 전달받은 결과를 Client1에서 파일로 출력합니다. \n");
+			start_file_print(calc_client);
 		}
 		exit(0);
 	}
@@ -86,7 +60,8 @@ int main() {
 		}
 		
 		else { // 계산결과를 받아 파일로 출력
-
+			printf("Server로 부터 전달받은 결과를 Client2에서 파일로 출력합니다. \n");
+			start_file_print(calc_client);
 
 		}
 		exit(0);
@@ -95,21 +70,18 @@ int main() {
 int t_id;
 int status;
 pthread_attr_t attr;
-pthread_mutex_init(&mutexcal_server, NULL);
 pthread_attr_init(&attr);
 pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
 if(t_id = pthread_create(&callThd[1][0], &attr, (void*)server_do, (void*)calc_client) != 0) exit(1);
-if(t_id = pthread_create(&callThd[2][1], &attr, (void*)server_do, (void*)calc_client)!= 0) exit(1);
-if(t_id = pthread_create(&callThd[3][2], &attr, (void*)server_do, (void*)calc_client)!= 0) exit(1);
+if(t_id = pthread_create(&callThd[1][1], &attr, (void*)server_do, (void*)calc_client)!= 0) exit(1);
+if(t_id = pthread_create(&callThd[1][2], &attr, (void*)server_do, (void*)calc_client)!= 0) exit(1);
 
 pthread_attr_destroy(&attr);
 
 for (int i = 0; i < NUM_THREADS; i++) {
 	pthread_join(callThd[1][i], (void**)&status);
 }
-
-pthread_mutex_destroy(&mutexcal_server);
 
 pthread_exit(NULL);
 }
@@ -173,13 +145,13 @@ void normal_calc(void *tmp_p) {
 
 
 	if(tp->calc_client != 2) { // 계산하는 client가 1이라면
-		if(Client2Server(C1toS_QKEY, answer, 'n') < 0) {
+		if(Client2Server(C1toS_QKEY, answer, 'n', arr) < 0) {
 			printf("메시지 전송 실패\n");
 		}
 	
 	}
 	else { // 계산하는 client가 2라면
-		if(Client2Server(C2toS_QKEY, answer, 'n') < 0) {
+		if(Client2Server(C2toS_QKEY, answer, 'n', arr) < 0) {
 			printf("메시지 전송 실패\n");
 		}
  	}
@@ -225,13 +197,13 @@ void order_calc(void* tmp_p) {
 
 	int answer = eval(to_postfix);
 	if(tp->calc_client != 2) { // 계산하는 client가 1이라면
-		if(Client2Server(C1toS_QKEY, answer, 'o') < 0) {
+		if(Client2Server(C1toS_QKEY, answer, 'o', arr) < 0) {
 			printf("메시지 전송 실패\n");
 		}
 	
 	}
 	else { // 계산하는 client가 2라면
-		if(Client2Server(C2toS_QKEY, answer, 'o') < 0) {
+		if(Client2Server(C2toS_QKEY, answer, 'o', arr) < 0) {
 			printf("메시지 전송 실패\n");
 		}
  	}
@@ -284,13 +256,13 @@ void inverse_calc(void* tmp_p) {
 
 	int answer = eval(to_postfix);
 	if(tp->calc_client != 2) { // 계산하는 client가 1이라면
-		if(Client2Server(C1toS_QKEY, answer, 'i') < 0) {
+		if(Client2Server(C1toS_QKEY, answer, 'i', arr) < 0) {
 			printf("메시지 전송 실패\n");
 		}
 	
 	}
 	else { // 계산하는 client가 2라면
-		if(Client2Server(C2toS_QKEY, answer, 'i') < 0) {
+		if(Client2Server(C2toS_QKEY, answer, 'i', arr) < 0) {
 			printf("메시지 전송 실패\n");
 		}
  	}
@@ -338,6 +310,8 @@ void server_do(void *tmp_p)  {
 	long calc_client = (long)tmp_p;
 	int r_qid;
 	int mlen;
+	char print_form[MAX_SIZE*2];
+	char cal_result_arr[MAX_SIZE];
 	key_t revq_key, sndq_key;
 	c2s_msg rcv_msg;
 
@@ -359,5 +333,99 @@ void server_do(void *tmp_p)  {
 		perror("메시지 수신 실패");
 		return;
 	}
-	printf("계산결과 : %d\n", rcv_msg.real_msg.result);
+
+	sprintf(cal_result_arr,  "%d", rcv_msg.real_msg.result);
+
+	strcat(print_form, "계산식 : ");
+	strcat(print_form, rcv_msg.real_msg.cal_formula);
+	strcat(print_form, "계산 방법 : ");
+	
+	switch(rcv_msg.real_msg.calc_method) {
+		case 'n':
+		strcat(print_form, "정상 계산");
+		break;
+		case 'o':
+		strcat(print_form, "앞으로 계산");
+		break;
+		case 'i':
+		strcat(print_form, "거꾸로 계산");
+	}
+
+	strcat(print_form, "\n");
+	strcat(print_form, "계산 결과 : ");
+	strcat(print_form, cal_result_arr);
+	strcat(print_form, "\n");
+
+	if(Server2Client(sndq_key, rcv_msg.real_msg.calc_method , print_form) < 0) {
+			printf("메시지 전송 실패\n");
+		}
+
+}
+
+void file_print(void *tmp_p) {
+	long calc_client = (long)tmp_p;
+	int r_qid;
+	int mlen;
+	key_t revq_key;
+	s2c_msg rcv_msg;
+	FILE *fp;
+	if(calc_client != 2) revq_key = StoC2_QKEY;
+	else  revq_key = StoC1_QKEY;
+	
+	if((r_qid = init_queue(revq_key)) == -1) {
+		perror("메시지 큐 생성 & 개방 실패");
+		return; // 메시지큐 생성
+	}
+	
+	if((mlen = msgrcv(r_qid, &rcv_msg, sizeof(rcv_msg.real_msg), 0, 0 )) ==  -1) {
+		perror("메시지 수신 실패");
+		return;
+	}
+
+	switch(rcv_msg.real_msg.calc_method) {
+		case 'n':
+			if((fp = fopen("output3.txt", "w")) == NULL) {
+				perror("파일 열기 실패");
+				return;
+			}
+			fprintf(fp, "%s", rcv_msg.real_msg.print_msg);
+			fclose(fp);
+			break;
+		case 'o':
+		    if((fp = fopen("output1.txt", "w")) == NULL) {
+				perror("파일 열기 실패");
+				return;
+			}
+			fprintf(fp, "%s", rcv_msg.real_msg.print_msg);
+			fclose(fp);
+			break;
+		case 'i':
+		   		if((fp = fopen("output2.txt", "w")) == NULL) {
+				perror("파일 열기 실패");
+				return;
+			}
+			fprintf(fp, "%s", rcv_msg.real_msg.print_msg);
+			fclose(fp);
+	}
+
+}
+
+void start_file_print(long calc_client) {
+	
+	int t_id;
+	int status;
+	pthread_attr_t attr;
+	pthread_attr_init(&attr);
+	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+
+	if(t_id = pthread_create(&callThd[2][0], &attr, (void*)file_print, (void*)calc_client) != 0) exit(1);
+	if(t_id = pthread_create(&callThd[2][1], &attr, (void*)file_print, (void*)calc_client)!= 0) exit(1);
+	if(t_id = pthread_create(&callThd[2][2], &attr, (void*)file_print, (void*)calc_client)!= 0) exit(1);
+
+	pthread_attr_destroy(&attr);
+
+	for (int i = 0; i < NUM_THREADS; i++) {
+		pthread_join(callThd[2][i], (void**)&status);
+	}
+	pthread_exit(NULL);
 }
