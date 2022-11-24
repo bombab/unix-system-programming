@@ -50,7 +50,7 @@ int main() {
 		}
 
 		else { // Server에게 계산결과를 받아 파일로 출력
-			printf("Server로 부터 전달받은 결과를 Client1에서 파일로 출력합니다. \n");
+			printf("Client 1에서 Server로 부터 전달받은 계산 결과를 텍스트 파일로 출력합니다.  \n");
 			start_file_print(calc_client);
 		}
 		exit(0);
@@ -69,7 +69,7 @@ int main() {
 		}
 		
 		else { // 계산결과를 받아 파일로 출력
-			printf("Server로 부터 전달받은 결과를 Client2에서 파일로 출력합니다. \n");
+			printf("Client 2에서 Server로 부터 전달받은 계산 결과를 텍스트 파일로 출력합니다. \n");
 			start_file_print(calc_client);
 
 		}
