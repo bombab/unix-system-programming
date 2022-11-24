@@ -7,8 +7,12 @@
 #include <sys/time.h>
 #include "stack.h"
 #include "calc.h"
+#include <sys/types.h>
+#include <sys/wait.h>
 #include "messageq.h"
 #define NUM_THREADS 3
+#define BILLION 1000000000L;
+
 
 void normal_calc(void *tmp_p); // 정상적으로 계산 - 후위표기식 변환 -> 계산
 void order_calc(void *tmp_p); // 연산순서 무시하고 순서대로 계산 - 후위표기식 변환 -> 계산 
@@ -25,11 +29,16 @@ long calc_client;
 // main 함수가 Server 역할  
 int main() {
 	pid_t pid_client1, pid_client2;
-	struct timespec start, stop;
+	int status_waitpid;
+	struct timespec start, end;
 	double accum;
 	printf("계산을 수행할 클라이언트를 선택해주세요 1번 - Client1, 2번 - Client2 : ");
 	scanf("%ld", &calc_client);
- 	
+ 	if(clock_gettime(CLOCK_MONOTONIC, &start) == -1) {
+		perror("clock gettime");
+		return EXIT_FAILURE;
+	}
+
 	pid_client1 = fork(); // Client 1 생성
 	if(pid_client1 < 0) perror("Client 1 생성 실패");
 
@@ -82,7 +91,14 @@ pthread_attr_destroy(&attr);
 for (int i = 0; i < NUM_THREADS; i++) {
 	pthread_join(callThd[1][i], (void**)&status);
 }
-
+waitpid(pid_client1,&status_waitpid, 0);
+waitpid(pid_client2,&status_waitpid, 0);
+if(clock_gettime(CLOCK_MONOTONIC, &end) == -1) {
+		perror("clock gettime");
+		return EXIT_FAILURE;
+	}
+accum = (end.tv_sec - start.tv_sec) + (double)(end.tv_nsec - start.tv_nsec) / (double)BILLION;
+printf("Message Passing 수행시간 : %.9f\n", accum);
 pthread_exit(NULL);
 }
 
