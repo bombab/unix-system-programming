@@ -30,7 +30,6 @@ typedef struct
 } c2s_msg;
 
 typedef struct {
-    char calc_method;
     char print_msg[MAX_SIZE * 2];
 }file_msg;
 
@@ -75,17 +74,16 @@ int Client2Server(key_t type, int cal_result, char cal_type, char arr[])
         return 0; // 정상적으로 전송될 시 0을 반환
 }
 
-int Server2Client(key_t type, char cal_type, char str[]) { // server에서 client로 메시지 전송
+int Server2Client(key_t type, char str[]) { // server에서 client로 메시지 전송
     int s_qid;
     s2c_msg s2c;
     key_t snd_type = type;
     if ((s_qid = init_queue(snd_type)) == -1)
         return -1; // 메시지큐 생성
 
-    s2c.real_msg.calc_method = cal_type;
     strcpy(s2c.real_msg.print_msg, str);
     s2c.mtype = (long)MSG_MTYPE;
-
+    
      if (msgsnd(s_qid, &s2c, sizeof(s2c.real_msg), 0) == -1)
     {
 
