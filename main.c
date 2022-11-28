@@ -171,6 +171,7 @@ void normal_calc(void *tmp_p) {
 			exit(1);
 		}
  	}
+	pthread_exit(NULL);
 }
 
 
@@ -227,7 +228,7 @@ void order_calc(void* tmp_p) {
 			exit(1);
 		}
  	}
-
+	pthread_exit(NULL);
 }
 
 
@@ -290,6 +291,7 @@ void inverse_calc(void* tmp_p) {
 			exit(1);
 		}
  	}
+	pthread_exit(NULL);
 }
 
 
@@ -360,7 +362,7 @@ void recv_thread(void *tmp_p) {
 		exit(1); // 메시지큐 생성
 	}
 
-	while(1) {
+	for(;;) {
 		if((mlen = msgrcv(r_qid, &rcv_msg[rcv_count], sizeof(rcv_msg[0].real_msg), 0, IPC_NOWAIT )) ==  -1) {
 			if(errno != ENOMSG ) {
 				perror("메시지 수신 실패");
@@ -403,14 +405,14 @@ void recv_thread(void *tmp_p) {
 		strcpy(input2_result, print_form);
 		is_finished_rcv2 = 1;
 	}
-
+	pthread_exit(NULL);
 }
 
 
 void send_thread(void *tmp_p) {
 
 	long client = (long)tmp_p;
-	while(1) {
+	for(;;) {
 			if((client == CLIENT_ONE) && is_finished_rcv1 ) {
 				if(Server2Client(StoC2_QKEY, input1_result) <0) {
 					perror("메시지 전송 실패");
@@ -426,6 +428,7 @@ void send_thread(void *tmp_p) {
 				break;
 			}
 	}
+	pthread_exit(NULL);
 
 }
 
@@ -446,7 +449,7 @@ void file_print(void *tmp_p) {
 		exit(1); // 메시지큐 생성
 	}
 	
-	while(1) {
+	for(;;) {
 		if((mlen = msgrcv(r_qid, &rcv_msg, sizeof(rcv_msg.real_msg), 0, IPC_NOWAIT )) ==  -1) {
 			if(errno != ENOMSG ) {	
 				perror("메시지 수신 실패");
@@ -474,6 +477,6 @@ void file_print(void *tmp_p) {
 
 	fprintf(fp, "%s", rcv_msg.real_msg.print_msg);
 	fclose(fp);
-
+	pthread_exit(NULL);
 }
 
