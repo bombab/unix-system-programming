@@ -51,7 +51,10 @@ int main() {
 		return EXIT_FAILURE;
 	}
 
-	if((pid_client1 = fork()) < 0) perror("Client 1 생성 실패");
+	if((pid_client1 = fork()) < 0) {
+		perror("Client 1 생성 실패");
+		exit(1);
+		}
 
 	else if(pid_client1 == 0) {  // Client 1 수행 영역
 		start_client(CLIENT_ONE);
@@ -59,7 +62,10 @@ int main() {
 	}
 
 
-	if((pid_client2 = fork()) < 0) perror("Client 2 생성 실패");
+	if((pid_client2 = fork()) < 0) { 
+		perror("Client 2 생성 실패");
+		exit(1);
+	}
 
 	else if(pid_client2  == 0) { // Client 2 수행 영역
 		start_client(CLIENT_TWO);
@@ -106,7 +112,7 @@ void normal_calc(void *tmp_p) {
 	pthread_mutex_unlock(info_p->mutexcal_client);
 	int verified = is_verified(arr);
 	if (verified == 0) {
-		fprintf(stderr, "수식이 유효하지 않습니다.\n");
+		perror( "수식이 유효하지 않습니다.\n");
 		exit(1); // 추후 가능하면 thread로 리턴하고 특정값을 전달하여 클라이언트에서 에러 발생을 알리는 식으로 변경 
 	}
 
@@ -154,13 +160,15 @@ void normal_calc(void *tmp_p) {
 
 	if(info_p->client == CLIENT_ONE) { // 계산하는 client가 1이라면
 		if(Client2Server(C1toS_QKEY, answer, 'n', arr) < 0) {
-			printf("메시지 전송 실패\n");
+			perror("메시지 전송 실패\n");
+			exit(1);
 		}
 	
 	}
 	else { // 계산하는 client가 2라면
 		if(Client2Server(C2toS_QKEY, answer, 'n', arr) < 0) {
-			printf("메시지 전송 실패\n");
+			perror("메시지 전송 실패\n");
+			exit(1);
 		}
  	}
 }
@@ -178,7 +186,7 @@ void order_calc(void* tmp_p) {
 
 	int verified = is_verified(arr);
 	if (verified == 0) {
-		fprintf(stderr, "수식이 유효하지 않습니다.\n");
+		perror("수식이 유효하지 않습니다.\n");
 		exit(1); // 추후 가능하면 thread로 리턴하고 특정값을 전달하여 클라이언트에서 에러 발생을 알리는 식으로 변경 
 	}
 
@@ -208,13 +216,15 @@ void order_calc(void* tmp_p) {
 
 	if(info_p->client == CLIENT_ONE) { // 계산하는 client가 1이라면
 		if(Client2Server(C1toS_QKEY, answer, 'o', arr) < 0) {
-			printf("메시지 전송 실패\n");
+			perror("메시지 전송 실패\n");
+			exit(1);
 		}
 	
 	}
 	else { // 계산하는 client가 2라면
 		if(Client2Server(C2toS_QKEY, answer, 'o', arr) < 0) {
-			printf("메시지 전송 실패\n");
+			perror("메시지 전송 실패\n");
+			exit(1);
 		}
  	}
 
@@ -233,7 +243,7 @@ void inverse_calc(void* tmp_p) {
 
 	int verified = is_verified(arr);
 	if (verified == 0) {
-		fprintf(stderr, "수식이 유효하지 않습니다.\n");
+		perror("수식이 유효하지 않습니다.\n");
 		exit(1); // 추후 가능하면 thread로 리턴하고 특정값을 전달하여 클라이언트에서 에러 발생을 알리는 식으로 변경 
 	}
 
@@ -269,13 +279,15 @@ void inverse_calc(void* tmp_p) {
 
 	if( info_p->client == CLIENT_ONE) { // 계산하는 client가 1이라면
 		if(Client2Server(C1toS_QKEY, answer, 'i', arr) < 0) {
-			printf("메시지 전송 실패\n");
+			perror("메시지 전송 실패\n");
+			exit(1);
 		}
 	
 	}
 	else { // 계산하는 client가 2라면
 		if(Client2Server(C2toS_QKEY, answer, 'i', arr) < 0) {
-			printf("메시지 전송 실패\n");
+			perror("메시지 전송 실패\n");
+			exit(1);
 		}
  	}
 }
@@ -283,7 +295,7 @@ void inverse_calc(void* tmp_p) {
 
 void start_client(long client) {
 
-	int status;
+	long status;
 	int t_id;
 	FILE *fp;
 	calc_thread_info info;
@@ -294,7 +306,7 @@ void start_client(long client) {
 		 fp = fopen("input2.txt", "r");
 
 	if (fp == NULL) {
-		fprintf(stderr, "파일이 열리지 않았습니다.\n");
+		perror("파일이 열리지 않았습니다.\n");
 		exit(1);
 	}
 
@@ -345,14 +357,14 @@ void recv_thread(void *tmp_p) {
 
 	if((r_qid = init_queue(revq_key)) == -1) {
 		perror("메시지 큐 생성 & 개방 실패");
-		return; // 메시지큐 생성
+		exit(1); // 메시지큐 생성
 	}
 
 	while(1) {
 		if((mlen = msgrcv(r_qid, &rcv_msg[rcv_count], sizeof(rcv_msg[0].real_msg), 0, IPC_NOWAIT )) ==  -1) {
 			if(errno != ENOMSG ) {
 				perror("메시지 수신 실패");
-				return;
+				exit(1);
 			}
 		}
 		else if((++rcv_count) == 3) break; 
@@ -400,11 +412,17 @@ void send_thread(void *tmp_p) {
 	long client = (long)tmp_p;
 	while(1) {
 			if((client == CLIENT_ONE) && is_finished_rcv1 ) {
-				Server2Client(StoC2_QKEY, input1_result);
+				if(Server2Client(StoC2_QKEY, input1_result) <0) {
+					perror("메시지 전송 실패");
+					exit(1);
+				};
 				break;
 			}
 			else if((client == CLIENT_TWO ) && is_finished_rcv2) {
-				Server2Client(StoC1_QKEY, input2_result);
+				if(Server2Client(StoC1_QKEY, input2_result) <0) {
+					perror("메시지 전송 실패");
+					exit(1);
+				};
 				break;
 			}
 	}
@@ -425,14 +443,14 @@ void file_print(void *tmp_p) {
 	
 	if((r_qid = init_queue(revq_key)) == -1) {
 		perror("메시지 큐 생성 & 개방 실패");
-		return; // 메시지큐 생성
+		exit(1); // 메시지큐 생성
 	}
 	
 	while(1) {
 		if((mlen = msgrcv(r_qid, &rcv_msg, sizeof(rcv_msg.real_msg), 0, IPC_NOWAIT )) ==  -1) {
 			if(errno != ENOMSG ) {	
 				perror("메시지 수신 실패");
-				return;
+				exit(1);
 			}
 		}
 		else break;
@@ -442,14 +460,14 @@ void file_print(void *tmp_p) {
 		case CLIENT_ONE:
 			if((fp = fopen("output2.txt", "w")) == NULL) {
 				perror("파일 열기 실패");
-				return;
+				exit(1);
 			}
 			break;
 
 		case CLIENT_TWO:
 		    if((fp = fopen("output1.txt", "w")) == NULL) {
 				perror("파일 열기 실패");
-				return;
+				exit(1);
 			}
 			break;
 	}
