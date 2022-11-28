@@ -17,13 +17,13 @@
 #define CLIENT_TWO 2
 #define SERVER 0
 
-void normal_calc(void *tmp_p); // 정상적으로 계산 - 후위표기식 변환 -> 계산
-void order_calc(void *tmp_p); // 연산순서 무시하고 순서대로 계산 - 후위표기식 변환 -> 계산 
-void inverse_calc(void *tmp_p); // 연산순서 무시하고 거꾸고 계산 - 후위표기식 변환 -> 계산
+void* normal_calc(void *tmp_p); // 정상적으로 계산 - 후위표기식 변환 -> 계산
+void* order_calc(void *tmp_p); // 연산순서 무시하고 순서대로 계산 - 후위표기식 변환 -> 계산 
+void* inverse_calc(void *tmp_p); // 연산순서 무시하고 거꾸고 계산 - 후위표기식 변환 -> 계산
 void start_client(long client); // client에서 파일을 읽어와 쓰레드를 생성 후 계산수행
-void recv_thread(void *tmp_p);
-void send_thread(void *tmp_p);
-void file_print(void *tmp_p);
+void* recv_thread(void *tmp_p);
+void* send_thread(void *tmp_p);
+void* file_print(void *tmp_p);
 
 int is_finished_rcv1 = 0;
 int is_finished_rcv2 = 0; 
@@ -80,10 +80,10 @@ pthread_attr_t attr;
 pthread_attr_init(&attr);
 pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
-if(t_id = pthread_create(&callThd[SERVER][0], &attr, (void*)recv_thread, (void*) CLIENT_ONE)!= 0) exit(1);
-if(t_id = pthread_create(&callThd[SERVER][1], &attr, (void*)recv_thread, (void*) CLIENT_TWO)!= 0) exit(1);
-if(t_id = pthread_create(&callThd[SERVER][2], &attr, (void*)send_thread,(void *)CLIENT_ONE)!= 0) exit(1);
-if(t_id = pthread_create(&callThd[SERVER][3], &attr, (void*)send_thread,(void*)CLIENT_TWO)!= 0) exit(1);
+if(t_id = pthread_create(&callThd[SERVER][0], &attr, &recv_thread, (void*) CLIENT_ONE)!= 0) exit(1);
+if(t_id = pthread_create(&callThd[SERVER][1], &attr, &recv_thread, (void*) CLIENT_TWO)!= 0) exit(1);
+if(t_id = pthread_create(&callThd[SERVER][2], &attr, &send_thread,(void *)CLIENT_ONE)!= 0) exit(1);
+if(t_id = pthread_create(&callThd[SERVER][3], &attr, &send_thread,(void*)CLIENT_TWO)!= 0) exit(1);
 
 pthread_attr_destroy(&attr);
 
@@ -101,7 +101,7 @@ printf("Message Passing 수행시간 : %.9f\n", accum);
 pthread_exit(NULL);
 }
 
-void normal_calc(void *tmp_p) {
+void* normal_calc(void *tmp_p) {
 
 	char arr[MAX_SIZE];
 	calc_thread_info *info_p = (calc_thread_info *)tmp_p;
@@ -175,7 +175,7 @@ void normal_calc(void *tmp_p) {
 }
 
 
-void order_calc(void* tmp_p) {
+void* order_calc(void* tmp_p) {
 
 	char arr[MAX_SIZE];
 	calc_thread_info *info_p = (calc_thread_info *)tmp_p;
@@ -232,7 +232,7 @@ void order_calc(void* tmp_p) {
 }
 
 
-void inverse_calc(void* tmp_p) {
+void* inverse_calc(void* tmp_p) {
 
 	char arr[MAX_SIZE];
 	calc_thread_info *info_p = (calc_thread_info *)tmp_p;
@@ -326,10 +326,10 @@ void start_client(long client) {
 	pthread_attr_init(&attr);
 	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
-	if(t_id = pthread_create(&callThd[client][0], &attr, (void*)normal_calc, (void*)info_p) != 0) exit(1);
-	if(t_id = pthread_create(&callThd[client][1], &attr, (void*)order_calc, (void*)info_p)!= 0) exit(1);
-	if(t_id = pthread_create(&callThd[client][2], &attr, (void*)inverse_calc, (void*)info_p)!= 0) exit(1);
-	if(t_id = pthread_create(&callThd[client][3], &attr, (void*)file_print, (void*)client)!= 0) exit(1);
+	if(t_id = pthread_create(&callThd[client][0], &attr, &normal_calc, (void*)info_p) != 0) exit(1);
+	if(t_id = pthread_create(&callThd[client][1], &attr, &order_calc, (void*)info_p)!= 0) exit(1);
+	if(t_id = pthread_create(&callThd[client][2], &attr, &inverse_calc, (void*)info_p)!= 0) exit(1);
+	if(t_id = pthread_create(&callThd[client][3], &attr, &file_print, (void*)client)!= 0) exit(1);
 
 	pthread_attr_destroy(&attr);
 
@@ -343,7 +343,7 @@ void start_client(long client) {
 
 }
 
-void recv_thread(void *tmp_p) {
+void* recv_thread(void *tmp_p) {
 
 	long client = (long)tmp_p;
 	int r_qid; int mlen;
@@ -409,7 +409,7 @@ void recv_thread(void *tmp_p) {
 }
 
 
-void send_thread(void *tmp_p) {
+void* send_thread(void *tmp_p) {
 
 	long client = (long)tmp_p;
 	for(;;) {
@@ -433,7 +433,7 @@ void send_thread(void *tmp_p) {
 }
 
 
-void file_print(void *tmp_p) {
+void* file_print(void *tmp_p) {
 
 	int r_qid;
 	int mlen;
