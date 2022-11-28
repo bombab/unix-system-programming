@@ -69,7 +69,7 @@ int main() {
 
 // ======= 여기서부터 Server 수행 영역 =========
 int t_id;
-int status;
+long status;
 pthread_attr_t attr;
 pthread_attr_init(&attr);
 pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
